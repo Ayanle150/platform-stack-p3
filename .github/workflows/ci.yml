@@ -1,0 +1,49 @@
+name: Build and Push
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    name: Build and push Docker images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ secrets.ACR_NAME }}
+
+      - name: Set image tag
+        id: tag
+        run: echo "TAG=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build and push api
+        run: |
+          docker build \
+            --target runtime \
+            -t ${{ secrets.ACR_NAME }}.azurecr.io/api:${{ steps.tag.outputs.TAG }} \
+            ./services/api
+          docker push ${{ secrets.ACR_NAME }}.azurecr.io/api:${{ steps.tag.outputs.TAG }}
+
+      - name: Build and push frontend
+        run: |
+          docker build \
+            --target runtime \
+            -t ${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ steps.tag.outputs.TAG }} \
+            ./services/frontend
+          docker push ${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ steps.tag.outputs.TAG }}

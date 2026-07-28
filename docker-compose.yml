@@ -1,0 +1,34 @@
+services:
+  api:
+    build:
+      context: ./services/api
+      target: runtime
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: local
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  frontend:
+    build:
+      context: ./services/frontend
+      target: runtime
+    ports:
+      - "8001:8001"
+    environment:
+      ENVIRONMENT: local
+      API_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
